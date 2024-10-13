@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fisiopad Notas</title>
+    <script type="module">
+        // Importando os módulos do Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+
+        // Configurações do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDYc8f1nnd5Gp8AbKt53dajouluhloDPC8",
+            authDomain: "fisionotepad.firebaseapp.com",
+            projectId: "fisionotepad",
+            storageBucket: "fisionotepad.appspot.com",
+            messagingSenderId: "293408841653",
+            appId: "1:293408841653:web:6a9398d9317e1694ac43fc",
+            measurementId: "G-H2PLG72GMJ"
+        };
+        
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Mostrar formulário de cadastro
+        window.showSignup = function() {
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('signup-form').style.display = 'block';
+            document.getElementById('signup-error').innerText = '';
+        }
+
+        // Mostrar formulário de login
+        window.showLogin = function() {
+            document.getElementById('signup-form').style.display = 'none';
+            document.getElementById('login-form').style.display = 'block';
+            document.getElementById('login-error').innerText = '';
+        }
+
+        // Função de login
+        window.login = function() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            signInWithEmailAndPassword(auth, email, password)
+                .then(userCredential => {
+                    document.getElementById('login-form').style.display = 'none';
+                    document.getElementById('notes-app').style.display = 'block';
+                    loadNotes();
+                })
+                .catch(error => {
+                    document.getElementById('login-error').innerText = 'Erro ao fazer login: ' + error.message;
+                });
+        }
+
+        // Função de cadastro
+        window.signup = function() {
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            createUserWithEmailAndPassword(auth, email, password)
+                .then(userCredential => {
+                    document.getElementById('signup-form').style.display = 'none';
+                    document.getElementById('notes-app').style.display = 'block';
+                    loadNotes(); // Carregar as notas padrão após o cadastro
+                })
+                .catch(error => {
+                    document.getElementById('signup-error').innerText = 'Erro ao cadastrar: ' + error.message;
+                });
+        }
+
+        const template = `# LEITO\n\n# NOME DO PACIENTE\n\n# MOTIVO DA INTERNAÇÃO\n\n# HPP\n\n# EXAME CLÍNICO-FÍSICO\n\n# INFUSÕES\n\nS/ INFUSÕES\nNORA\nVASO\nTRIDIL\nNIPRIDE\nMDZ\nFTN\n...\n\n# VIA AÉREA\nAA\nCN | MR| MNBZ (fluxo de O2)\nDTOT\nDTQT\n\n# PAR METROS VENTILATÓRIOS\nMODO E PAR METROS\nTempo de desmame e proposta\n\n# SINAIS VITAIS\nFC\nPA\nFR\nSpO2\nTAx\n\n# AVALIAÇÃO CINÉTICO-FUNCIONAL\n\nMRC\nIMS\nDINA\n\n# EXAMES COMPLEMENTARES\n\nGASOMETRIA:\nRX:\nTC:\nRM:\nEEG:\n\n# CONDUTAS FISIOTERAPÊUTICAS\n\nAvaliação e admissão no setor\nRecusou atendimento\nSem atendimento\nAdequação postural\nAjustes ventilatórios\nAlongamento\nCicloergometria\nDeambulação com auxílio\nDeambulação sob supervisão\nDesmame ventilatório\nDrenagem postural\nEletroterapia\nExtubação\nIncentivadores inspiratórios\nMonitorização dos sinais vitais\nPadrões ventilatórios\nSedestação à beira do leito\nSedestação na poltrona\nTreinamento muscular respiratório\nTreino de controle de tronco\nTreino de equilíbrio\nTreino de marcha\nTreino de marcha de andador\nTreino de marcha de muleta\nPosição Ortostática Ativa\nPosição Ortostática Passiva\n\n# DIAGNÓSTICO FISIOTERAPÊUTICO\n\n# PROGNÓSTICO FISIOTERAPÊUTICO\n\n# PLANO DE TRATAMENTO`;
+
+        let notes = {};  // Objeto para armazenar o conteúdo de cada aba
+
+        // Função para salvar as notas no Firestore
+        window.saveNotes = function() {
+            const userId = auth.currentUser.uid;
+            const data = {};
+            for (let i = 0; i < 10; i++) {
+                data[`tab-${i}`] = notes[`tab-${i}`] || template; // Usa o conteúdo salvo ou o template
+            }
+            setDoc(doc(db, "notes", userId), data)
+                .then(() => {
+                    alert('Notas salvas com sucesso!');
+                })
+                .catch(error => {
+                    alert('Erro ao salvar notas: ' + error.message);
+                });
+        }
+
+        // Função para carregar as notas do Firestore
+        window.loadNotes = function() {
+            const userId = auth.currentUser.uid;
+            getDoc(doc(db, "notes", userId)).then(doc => {
+                if (doc.exists()) {
+                    notes = doc.data();
+                } else {
+                    // Estrutura padrão se não houver notas existentes
+                    for (let i = 0; i < 10; i++) {
+                        notes[`tab-${i}`] = template; // Preenche com o conteúdo padrão
+                    }
+                }
+                switchTab(0); // Abre a primeira aba após o login
+                updateTextAreas();
+            }).catch(error => {
+                console.error("Erro ao carregar notas: ", error);
+            });
+        }
+
+        // Atualiza o conteúdo das textareas
+        function updateTextAreas() {
+            for (let i = 0; i < 10; i++) {
+                const textarea = document.getElementById(`tab-${i}`);
+                textarea.value = notes[`tab-${i}`] || template; // Se não houver conteúdo, carrega o template
+            }
+        }
+
+        // Função para alternar entre abas
+        window.switchTab = function(tabIndex) {
+            // Salva o conteúdo da aba ativa antes de mudar
+            const activeTextarea = document.querySelector('textarea.active');
+            const activeTabIndex = [...document.querySelectorAll('textarea')].findIndex(textarea => textarea.classList.contains('active'));
+            
+            if (activeTextarea && activeTabIndex !== -1) {
+                notes[`tab-${activeTabIndex}`] = activeTextarea.value; // Salva conteúdo da aba ativa
+            }
+
+            // Remove a classe "active" de todas as abas e textareas
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('textarea').forEach(textarea => textarea.classList.remove('active'));
+
+            // Ativa a aba e textarea selecionada
+            document.querySelectorAll('.tab')[tabIndex].classList.add('active');
+            const selectedTextarea = document.getElementById(`tab-${tabIndex}`);
+            selectedTextarea.classList.add('active');
+            selectedTextarea.value = notes[`tab-${tabIndex}`] || template; // Se não houver conteúdo, carrega o template
+        }
+
+        // Função de logout
+        window.logout = function() {
+            signOut(auth).then(() => {
+                document.getElementById('login-form').style.display = 'block';
+                document.getElementById('notes-app').style.display = 'none';
+                document.getElementById('login-email').value = '';
+                document.getElementById('login-password').value = '';
+                document.getElementById('signup-email').value = '';
+                document.getElementById('signup-password').value = '';
+                for (let i = 0; i < 10; i++) {
+                    notes[`tab-${i}`] = ''; // Limpa as notas
+                }
+                updateTextAreas();
+            }).catch(error => {
+                alert('Erro ao fazer logout: ' + error.message);
+            });
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        input {
+            width: 300px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #notes-app {
+            display: none;
+            width: 80%;
+            max-width: 800px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .tab.active {
+            background: #007bff;
+            color: white;
+            border-bottom: none;
+        }
+
+        textarea {
+            width: 100%;
+            height: 300px;
+            display: none;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        textarea.active {
+            display: block;
+        }
+
+        #login-error, #signup-error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div id="login-form">
+        <h2>Login</h2>
+        <input type="email" id="login-email" placeholder="Email" required />
+        <input type="password" id="login-password" placeholder="Senha" required />
+        <button onclick="login()">Entrar</button>
+        <p id="login-error" style="color: red;"></p>
+        <p>Não tem uma conta? <a href="javascript:void(0)" onclick="showSignup()">Cadastre-se</a></p>
+    </div>
+
+    <div id="signup-form" style="display: none;">
+        <h2>Cadastro</h2>
+        <input type="email" id="signup-email" placeholder="Email" required />
+        <input type="password" id="signup-password" placeholder="Senha" required />
+        <button onclick="signup()">Cadastrar</button>
+        <p id="signup-error" style="color: red;"></p>
+        <p>Já tem uma conta? <a href="javascript:void(0)" onclick="showLogin()">Faça login</a></p>
+    </div>
+
+    <div id="notes-app">
+        <h2>Notas</h2>
+        <button onclick="logout()">Sair</button>
+        <div class="tabs">
+            <div class="tab" onclick="switchTab(0)">Aba 1</div>
+            <div class="tab" onclick="switchTab(1)">Aba 2</div>
+            <div class="tab" onclick="switchTab(2)">Aba 3</div>
+            <div class="tab" onclick="switchTab(3)">Aba 4</div>
+            <div class="tab" onclick="switchTab(4)">Aba 5</div>
+            <div class="tab" onclick="switchTab(5)">Aba 6</div>
+            <div class="tab" onclick="switchTab(6)">Aba 7</div>
+            <div class="tab" onclick="switchTab(7)">Aba 8</div>
+            <div class="tab" onclick="switchTab(8)">Aba 9</div>
+            <div class="tab" onclick="switchTab(9)">Aba 10</div>
+        </div>
+        <textarea id="tab-0" class="active"></textarea>
+        <textarea id="tab-1"></textarea>
+        <textarea id="tab-2"></textarea>
+        <textarea id="tab-3"></textarea>
+        <textarea id="tab-4"></textarea>
+        <textarea id="tab-5"></textarea>
+        <textarea id="tab-6"></textarea>
+        <textarea id="tab-7"></textarea>
+        <textarea id="tab-8"></textarea>
+        <textarea id="tab-9"></textarea>
+        <button onclick="saveNotes()">Salvar Notas</button>
+    </div>
+</body>
+</html>
