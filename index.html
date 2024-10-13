@@ -10,9 +10,10 @@
             background-color: #f0f0f5;
             display: flex;
             justify-content: center;
-            align-items: center;
-            height: 100vh;
+            align-items: flex-start;
+            min-height: 100vh;
             margin: 0;
+            padding: 20px;
         }
 
         h2 {
@@ -47,33 +48,7 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             border-radius: 8px;
             width: 100%;
-            max-width: 400px;
-        }
-
-        .form-container p {
-            margin: 5px 0;
-        }
-
-        #notes-app textarea {
-                height: 60vh; /* Altura reduzida em telas menores */
-            }
-
-        #login-error, #signup-error {
-            color: red;
-            font-size: 14px;
-        }
-
-        .switch-link {
-            background: none;
-            border: none;
-            color: #007BFF;
-            text-decoration: underline;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .switch-link:hover {
-            color: #0056b3;
+            max-width: 380px;
         }
 
         #notes-app {
@@ -81,24 +56,62 @@
             flex-direction: column;
             align-items: center;
             width: 100%;
-            max-width: 800px; /* Aumenta a largura máxima */
+            max-width: 780px;
             margin: 20px auto;
+        }
 
-        @media (max-width: 600px) {
-            body {
-                padding: 20px;
-            }
+        .tab-content {
+            display: none;
+            flex-direction: column;
+            width: 100%;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .tab-content.active {
+            display: flex;
         }
     </style>
 </head>
-<meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fisiopad Notas</title>
+<body>
+    <div id="login-form">
+        <h2>Login</h2>
+        <input type="email" id="login-email" placeholder="E-mail"><br>
+        <input type="password" id="login-password" placeholder="Senha"><br>
+        <button onclick="login()">Entrar</button>
+        <p id="login-error" style="color:red;"></p>
+        <p>Não tem uma conta? <button class="switch-link" onclick="showSignup()">Cadastre-se</button></p>
+    </div>
+
+    <div id="signup-form" style="display:none;">
+        <h2>Cadastro</h2>
+        <input type="email" id="signup-email" placeholder="E-mail"><br>
+        <input type="password" id="signup-password" placeholder="Senha"><br>
+        <button onclick="signup()">Cadastrar</button>
+        <p id="signup-error" style="color:red;"></p>
+        <p>Já tem uma conta? <button class="switch-link" onclick="showLogin()">Faça Login</button></p>
+    </div>
+
+    <div id="notes-app" style="display:none;">
+        <h2>Bloco de Notas</h2>
+
+        <div class="tab">
+            <button onclick="addTab()">Adicionar Nova Aba</button>
+        </div>
+
+        <div id="tab-container"></div>
+
+        <button onclick="saveAllTabs()">Salvar Todas as Abas</button>
+        <button onclick="logout()">Logout</button>
+    </div>
+
     <script type="module">
         // Importando os módulos do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where, deleteDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 
         // Configurações do Firebase
         const firebaseConfig = {
@@ -110,27 +123,27 @@
             appId: "1:293408841653:web:6a9398d9317e1694ac43fc",
             measurementId: "G-H2PLG72GMJ"
         };
-        
+
         // Inicializar Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Mostrar formulário de cadastro
+        // Variável global para armazenar abas
+        let tabs = {};
+
         window.showSignup = function() {
             document.getElementById('login-form').style.display = 'none';
             document.getElementById('signup-form').style.display = 'block';
             document.getElementById('signup-error').innerText = '';
         }
 
-        // Mostrar formulário de login
         window.showLogin = function() {
             document.getElementById('signup-form').style.display = 'none';
             document.getElementById('login-form').style.display = 'block';
             document.getElementById('login-error').innerText = '';
         }
 
-        // Função de login
         window.login = function() {
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
@@ -138,14 +151,13 @@
                 .then(userCredential => {
                     document.getElementById('login-form').style.display = 'none';
                     document.getElementById('notes-app').style.display = 'block';
-                    loadNote();
+                    loadTabs(); // Carrega as abas do usuário
                 })
                 .catch(error => {
                     document.getElementById('login-error').innerText = 'Erro ao fazer login: ' + error.message;
                 });
         }
 
-        // Função de cadastro
         window.signup = function() {
             const email = document.getElementById('signup-email').value;
             const password = document.getElementById('signup-password').value;
@@ -153,167 +165,135 @@
                 .then(userCredential => {
                     document.getElementById('signup-form').style.display = 'none';
                     document.getElementById('notes-app').style.display = 'block';
-                    loadNote(); // Carregar a nota padrão após o cadastro
                 })
                 .catch(error => {
                     document.getElementById('signup-error').innerText = 'Erro ao cadastrar: ' + error.message;
                 });
         }
 
-        // Função para salvar a nota no Firestore
-        window.saveNote = function() {
-            const noteContent = document.getElementById('note-content').value;
-            const userId = auth.currentUser.uid;
-            setDoc(doc(db, "notes", userId), { content: noteContent })
-                .then(() => {
-                    alert('Nota salva com sucesso!');
-                })
-                .catch(error => {
-                    alert('Erro ao salvar a nota: ' + error.message);
-                });
-        }
-
-        // Função para carregar nota existente
-        window.loadNote = function() {
-            const userId = auth.currentUser.uid;
-            getDoc(doc(db, "notes", userId)).then(doc => {
-                if (doc.exists()) {
-                    document.getElementById('note-content').value = doc.data().content;
-                } else {
-                    // Estrutura padrão se não houver nota existente
-                    document.getElementById('note-content').value = `# LEITO
-
-# NOME DO PACIENTE
-
-# MOTIVO DA INTERNAÇÃO
-
-# HPP
-
-# EXAME CLÍNICO-FÍSICO
-
-# INFUSÕES
-
-S/ INFUSÕES
-NORA
-VASO
-TRIDIL
-NIPRIDE
-MDZ
-FTN
-...
-
-# VIA AÉREA
-AA
-CN | MR| MNBZ (fluxo de O2)
-DTOT
-DTQT
-
-# PAR METROS VENTILATÓRIOS 
-MODO E PAR METROS
-Tempo de desmame e proposta
-
-# SINAIS VITAIS
-FC
-PA
-FR
-SpO2
-TAx
-
-# AVALIAÇÃO CINÉTICO-FUNCIONAL
-
-MRC
-IMS
-DINA
-
-# EXAMES COMPLEMENTARES
-
-GASOMETRIA:
-RX:
-TC:
-RM:
-EEG:
-
-# CONDUTAS FISIOTERAPÊUTICAS
-
-Avaliação e admissão no setor
-Recusou atendimento
-Sem atendimento
-Adequação postural
-Ajustes ventilatórios
-Alongamento 
-Cicloergometria
-Deambulação com auxílio
-Deambulação sob supervisão
-Desmame ventilatório
-Drenagem postural
-Eletroterapia
-Extubação
-Incentivadores inspiratórios
-Monitorização dos sinais vitais
-Padrões ventilatórios
-Sedestação à beira do leito
-Sedestação na poltrona
-Treinamento muscular respiratório
-Treino de controle de tronco
-Treino de equilíbrio
-Treino de marcha
-Treino de marcha de andador
-Treino de marcha de muleta
-Posição Ortostática Ativa
-Posição Ortostática Passiva
-
-# DIAGNÓSTICO FISIOTERAPÊUTICO
-
-# PROGNÓSTICO FISIOTERAPÊUTICO
-
-# PLANO DE TRATAMENTO`;
-                }
-            }).catch(error => {
-                console.error("Erro ao carregar a nota: ", error);
-            });
-        }
-
-        // Função de logout
         window.logout = function() {
             signOut(auth).then(() => {
                 document.getElementById('login-form').style.display = 'block';
                 document.getElementById('notes-app').style.display = 'none';
-                document.getElementById('login-email').value = '';
-                document.getElementById('login-password').value = '';
-                document.getElementById('note-content').value = '';
+                document.getElementById('tab-container').innerHTML = '';
+                tabs = {};
             }).catch(error => {
                 alert('Erro ao fazer logout: ' + error.message);
             });
         }
 
-        // Exibir o formulário de login por padrão
-        document.getElementById('login-form').style.display = 'block';
+        // Função para adicionar nova aba
+        window.addTab = function() {
+            const tabContainer = document.getElementById('tab-container');
+            const tabId = `tab-${Date.now()}`;
+
+            const tabContent = document.createElement('div');
+            tabContent.className = 'tab-content active';
+            tabContent.id = tabId;
+
+            // Formulário editável dentro da aba
+            tabContent.innerHTML = `
+                <h3>Bloco de Notas - Aba ${Object.keys(tabs).length + 1}</h3>
+                <label for="leito-${tabId}">Leito:</label>
+                <input type="text" id="leito-${tabId}" placeholder="Leito"><br>
+
+                <label for="nome-${tabId}">Nome do Paciente:</label>
+                <input type="text" id="nome-${tabId}" placeholder="Nome do Paciente"><br>
+
+                <label for="motivo-${tabId}">Motivo da Internação:</label>
+                <input type="text" id="motivo-${tabId}" placeholder="Motivo da Internação"><br>
+
+                <label for="exame-${tabId}">Exame Clínico-Físico:</label>
+                <textarea id="exame-${tabId}" placeholder="Exame Clínico-Físico"></textarea><br>
+
+                <button onclick="deleteTab('${tabId}')">Excluir Aba</button>
+            `;
+
+            tabContainer.appendChild(tabContent);
+
+            // Armazena a aba na variável global
+            tabs[tabId] = tabContent;
+        }
+
+        // Função para salvar os dados de uma aba
+        window.saveTab = function(tabId) {
+            const leito = document.getElementById(`leito-${tabId}`).value;
+            const nome = document.getElementById(`nome-${tabId}`).value;
+            const motivo = document.getElementById(`motivo-${tabId}`).value;
+            const exame = document.getElementById(`exame-${tabId}`).value;
+                        const userId = auth.currentUser.uid;
+
+            // Salvar os dados no Firestore
+            const tabRef = doc(db, 'users', userId, 'tabs', tabId);
+            setDoc(tabRef, { leito, nome, motivo, exame })
+                .then(() => {
+                    console.log(`Aba ${tabId} salva com sucesso!`);
+                })
+                .catch(error => {
+                    console.error(`Erro ao salvar a aba ${tabId}: `, error);
+                });
+        }
+
+        // Função para salvar todas as abas
+        window.saveAllTabs = function() {
+            for (const tabId in tabs) {
+                saveTab(tabId);
+            }
+            alert("Todas as abas foram salvas!");
+        }
+
+        // Função para deletar uma aba
+        window.deleteTab = function(tabId) {
+            if (confirm("Você tem certeza que deseja excluir esta aba?")) {
+                document.getElementById(tabId).remove();
+                delete tabs[tabId]; // Remove a aba da variável global
+            }
+        }
+
+        // Função para carregar as abas do usuário
+        async function loadTabs() {
+            const userId = auth.currentUser.uid;
+            const tabsRef = collection(db, 'users', userId, 'tabs');
+            const tabsSnapshot = await getDocs(tabsRef);
+            tabsSnapshot.forEach(doc => {
+                const tabId = doc.id;
+                const data = doc.data();
+                addTab(tabId, data.leito, data.nome, data.motivo, data.exame);
+            });
+        }
+
+        // Adiciona uma aba com dados existentes
+        function addTab(tabId, leito = '', nome = '', motivo = '', exame = '') {
+            const tabContainer = document.getElementById('tab-container');
+
+            const tabContent = document.createElement('div');
+            tabContent.className = 'tab-content active';
+            tabContent.id = tabId;
+
+            // Formulário editável dentro da aba
+            tabContent.innerHTML = `
+                <h3>Bloco de Notas - Aba ${Object.keys(tabs).length + 1}</h3>
+                <label for="leito-${tabId}">Leito:</label>
+                <input type="text" id="leito-${tabId}" placeholder="Leito" value="${leito}"><br>
+
+                <label for="nome-${tabId}">Nome do Paciente:</label>
+                <input type="text" id="nome-${tabId}" placeholder="Nome do Paciente" value="${nome}"><br>
+
+                <label for="motivo-${tabId}">Motivo da Internação:</label>
+                <input type="text" id="motivo-${tabId}" placeholder="Motivo da Internação" value="${motivo}"><br>
+
+                <label for="exame-${tabId}">Exame Clínico-Físico:</label>
+                <textarea id="exame-${tabId}" placeholder="Exame Clínico-Físico">${exame}</textarea><br>
+
+                <button onclick="deleteTab('${tabId}')">Excluir Aba</button>
+            `;
+
+            tabContainer.appendChild(tabContent);
+
+            // Armazena a aba na variável global
+            tabs[tabId] = tabContent;
+        }
     </script>
-</head>
-<body>
-    <div id="login-form">
-        <h2>Login</h2>
-        <input type="email" id="login-email" placeholder="E-mail"><br>
-        <input type="password" id="login-password" placeholder="Senha"><br>
-        <button onclick="login()">Entrar</button>
-        <p id="login-error" style="color:red;"></p>
-        <p>Não tem uma conta? <button onclick="showSignup()">Cadastre-se</button></p>
-    </div>
-
-    <div id="signup-form" style="display:none;">
-        <h2>Cadastro</h2>
-        <input type="email" id="signup-email" placeholder="E-mail"><br>
-        <input type="password" id="signup-password" placeholder="Senha"><br>
-        <button onclick="signup()">Cadastrar</button>
-        <p id="signup-error" style="color:red;"></p>
-        <p>Já tem uma conta? <button onclick="showLogin()">Faça Login</button></p>
-    </div>
-
-    <div id="notes-app" style="display:none;">
-        <h2>Bloco de Notas</h2>
-        <textarea id="note-content" rows="10" cols="50"></textarea><br>
-        <button onclick="saveNote()">Salvar Nota</button>
-        <button onclick="logout()">Logout</button>
-    </div>
 </body>
 </html>
+
