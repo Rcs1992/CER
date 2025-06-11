@@ -2,17 +2,15 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Login | Cadastro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login | Solicitação de Acesso</title>
   <style>
-    /* Seu CSS aqui, igual ao original */
+    /* Seu CSS igual antes... */
     * {
       box-sizing: border-box;
     }
-
     body {
-      margin: 0;
-      padding: 0;
+      margin: 0; padding: 0;
       font-family: 'Segoe UI', sans-serif;
       background: linear-gradient(to right, #0d47a1, #1976d2);
       display: flex;
@@ -20,39 +18,33 @@
       justify-content: center;
       height: 100vh;
     }
-
     .container {
       background: white;
       padding: 30px;
       border-radius: 16px;
-      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 15px 40px rgba(0,0,0,0.2);
       width: 90%;
       max-width: 400px;
       text-align: center;
       animation: fadeIn 0.6s ease-in-out;
     }
-
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(30px); }
       to { opacity: 1; transform: translateY(0); }
     }
-
     .logo {
       width: 100px;
       margin-bottom: 20px;
     }
-
     h2 {
       color: #0d47a1;
       margin-bottom: 8px;
       font-weight: 600;
     }
-
     p {
       color: #444;
       margin-bottom: 20px;
     }
-
     .tabs {
       display: flex;
       justify-content: center;
@@ -60,7 +52,6 @@
       border-radius: 8px;
       overflow: hidden;
     }
-
     .tab {
       flex: 1;
       padding: 12px;
@@ -69,17 +60,15 @@
       color: #0d47a1;
       transition: all 0.3s ease;
       font-weight: 500;
+      user-select: none;
     }
-
     .tab:hover {
       background: #d0def0;
     }
-
     .tab.active {
       background: #0d47a1;
       color: white;
     }
-
     input {
       width: 100%;
       padding: 12px;
@@ -87,13 +76,12 @@
       border: 1px solid #ccc;
       border-radius: 8px;
       transition: border 0.2s;
+      font-size: 1em;
     }
-
     input:focus {
       border-color: #0d47a1;
       outline: none;
     }
-
     button {
       width: 100%;
       padding: 12px;
@@ -105,31 +93,28 @@
       cursor: pointer;
       margin-top: 10px;
       transition: background-color 0.3s ease;
+      font-size: 1em;
     }
-
     button:hover {
       background-color: #08306b;
     }
-
     #message {
-      color: red;
       margin-top: 12px;
       font-size: 0.9em;
+      min-height: 1.2em;
+      color: red;
+      user-select: none;
     }
-
     @media (max-width: 480px) {
       .container {
         padding: 20px;
       }
-
       h2 {
         font-size: 1.3em;
       }
-
       .tab {
         font-size: 0.9em;
       }
-
       input, button {
         font-size: 1em;
       }
@@ -141,23 +126,22 @@
   <div class="container">
     <img class="logo" src="https://8upload.com/preview/6849bd9869f30/R.A.F.A..png" alt="Logo" />
     <h2>Bem-vindo</h2>
-    <p>Faça login ou cadastre-se</p>
+    <p>Faça login ou solicite acesso</p>
 
     <div class="tabs">
-      <div class="tab active" id="loginTab" onclick="switchTab('login')">Login</div>
-      <div class="tab" id="registerTab" onclick="switchTab('register')">Cadastro</div>
+      <div class="tab active" id="loginTab">Login</div>
+      <div class="tab" id="requestTab">Solicitar Acesso</div>
     </div>
 
     <div id="loginForm">
       <input type="email" id="loginEmail" placeholder="Email" />
       <input type="password" id="loginPassword" placeholder="Senha" />
-      <button onclick="login()">Entrar</button>
+      <button type="button" id="loginBtn">Entrar</button>
     </div>
 
-    <div id="registerForm" style="display: none;">
-      <input type="email" id="registerEmail" placeholder="Email" />
-      <input type="password" id="registerPassword" placeholder="Senha" />
-      <button onclick="register()">Cadastrar</button>
+    <div id="requestForm" style="display: none;">
+      <input type="email" id="requestEmail" placeholder="Seu email para solicitação" />
+      <button type="button" id="requestAccessBtn">Solicitar Acesso</button>
     </div>
 
     <p id="message"></p>
@@ -165,7 +149,8 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCXHpzHoMDoHUsSz0HSObSbHx8ueRZ8_F0",
@@ -178,54 +163,81 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const db = getFirestore(app);
 
-    window.switchTab = function(tab) {
-      const loginTab = document.getElementById('loginTab');
-      const registerTab = document.getElementById('registerTab');
-      const loginForm = document.getElementById('loginForm');
-      const registerForm = document.getElementById('registerForm');
+    const loginTab = document.getElementById('loginTab');
+    const requestTab = document.getElementById('requestTab');
+    const loginForm = document.getElementById('loginForm');
+    const requestForm = document.getElementById('requestForm');
+    const message = document.getElementById('message');
 
+    // Função para alternar abas
+    function switchTab(tab) {
       if (tab === 'login') {
         loginTab.classList.add('active');
-        registerTab.classList.remove('active');
+        requestTab.classList.remove('active');
         loginForm.style.display = 'block';
-        registerForm.style.display = 'none';
-      } else {
+        requestForm.style.display = 'none';
+      } else if (tab === 'request') {
         loginTab.classList.remove('active');
-        registerTab.classList.add('active');
+        requestTab.classList.add('active');
         loginForm.style.display = 'none';
-        registerForm.style.display = 'block';
+        requestForm.style.display = 'block';
       }
+      message.textContent = '';
+      message.style.color = 'red';
+    }
 
-      document.getElementById('message').textContent = '';
-    };
+    loginTab.addEventListener('click', () => switchTab('login'));
+    requestTab.addEventListener('click', () => switchTab('request'));
 
-    window.login = function() {
-      const email = document.getElementById("loginEmail").value;
+    // Função login
+    async function login() {
+      const email = document.getElementById("loginEmail").value.trim();
       const password = document.getElementById("loginPassword").value;
 
-      signInWithEmailAndPassword(auth, email, password)
-        .then(() => {
-          window.location.href = "index.html";
-        })
-        .catch((error) => {
-          document.getElementById("message").textContent = "Erro ao logar: " + error.message;
-        });
-    };
+      if (!email || !password) {
+        message.style.color = "red";
+        message.textContent = "Por favor, preencha email e senha.";
+        return;
+      }
 
-    window.register = function() {
-      const email = document.getElementById("registerEmail").value;
-      const password = document.getElementById("registerPassword").value;
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        window.location.href = "index.html"; // Ajuste para a página que quiser
+      } catch (error) {
+        message.style.color = "red";
+        message.textContent = "Erro ao logar: " + error.message;
+      }
+    }
 
-      createUserWithEmailAndPassword(auth, email, password)
-        .then(() => {
-          document.getElementById("message").textContent = "Cadastro realizado com sucesso. Agora você pode fazer login.";
-          window.switchTab('login');
-        })
-        .catch((error) => {
-          document.getElementById("message").textContent = "Erro ao cadastrar: " + error.message;
+    document.getElementById('loginBtn').addEventListener('click', login);
+
+    // Função para solicitar acesso
+    async function requestAccess() {
+      const email = document.getElementById("requestEmail").value.trim();
+
+      if (!email) {
+        message.style.color = "red";
+        message.textContent = "Por favor, insira um email válido.";
+        return;
+      }
+
+      try {
+        await addDoc(collection(db, "solicitacoesAcesso"), {
+          email: email,
+          criadoEm: serverTimestamp()
         });
-    };
+        message.style.color = "green";
+        message.textContent = "Solicitação enviada com sucesso! Aguarde nosso contato.";
+        document.getElementById("requestEmail").value = "";
+      } catch (error) {
+        message.style.color = "red";
+        message.textContent = "Erro ao enviar solicitação: " + error.message;
+      }
+    }
+
+    document.getElementById('requestAccessBtn').addEventListener('click', requestAccess);
   </script>
 
 </body>
