@@ -1,12 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Login | Cadastro</title>
-  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js"></script>
   <style>
+    /* Seu CSS aqui, igual ao original */
     * {
       box-sizing: border-box;
     }
@@ -164,55 +163,23 @@
     <p id="message"></p>
   </div>
 
-  <script>
-    // 🔧 Firebase config (substitua com suas credenciais)
-   <script type="module">
-  // Importações do Firebase Modular SDK
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-  import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyCXHpzHoMDoHUsSz0HSObSbHx8ueRZ8_F0",
-    authDomain: "rafa-bba31.firebaseapp.com",
-    projectId: "rafa-bba31",
-    storageBucket: "rafa-bba31.firebasestorage.app",
-    messagingSenderId: "115601062100",
-    appId: "1:115601062100:web:dce8479ec545c4489fa341"
-  };
+    const firebaseConfig = {
+      apiKey: "AIzaSyCXHpzHoMDoHUsSz0HSObSbHx8ueRZ8_F0",
+      authDomain: "rafa-bba31.firebaseapp.com",
+      projectId: "rafa-bba31",
+      storageBucket: "rafa-bba31.firebasestorage.app",
+      messagingSenderId: "115601062100",
+      appId: "1:115601062100:web:dce8479ec545c4489fa341"
+    };
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
 
-  // Eventos de login e cadastro
-  window.login = () => {
-    const email = document.getElementById("loginEmail").value;
-    const password = document.getElementById("loginPassword").value;
-
-    signInWithEmailAndPassword(auth, email, password)
-      .then(() => {
-        window.location.href = "index.html";
-      })
-      .catch((error) => {
-        document.getElementById("message").textContent = "Erro ao logar: " + error.message;
-      });
-  };
-
-  window.register = () => {
-    const email = document.getElementById("registerEmail").value;
-    const password = document.getElementById("registerPassword").value;
-
-    createUserWithEmailAndPassword(auth, email, password)
-      .then(() => {
-        document.getElementById("message").textContent = "Cadastro realizado com sucesso. Agora você pode fazer login.";
-        switchTab('login');
-      })
-      .catch((error) => {
-        document.getElementById("message").textContent = "Erro ao cadastrar: " + error.message;
-      });
-  };
-</script>
-
-    function switchTab(tab) {
+    window.switchTab = function(tab) {
       const loginTab = document.getElementById('loginTab');
       const registerTab = document.getElementById('registerTab');
       const loginForm = document.getElementById('loginForm');
@@ -231,34 +198,35 @@
       }
 
       document.getElementById('message').textContent = '';
-    }
+    };
 
-    function login() {
+    window.login = function() {
       const email = document.getElementById("loginEmail").value;
       const password = document.getElementById("loginPassword").value;
 
-      auth.signInWithEmailAndPassword(email, password)
+      signInWithEmailAndPassword(auth, email, password)
         .then(() => {
           window.location.href = "index.html";
         })
-        .catch(error => {
+        .catch((error) => {
           document.getElementById("message").textContent = "Erro ao logar: " + error.message;
         });
-    }
+    };
 
-    function register() {
+    window.register = function() {
       const email = document.getElementById("registerEmail").value;
       const password = document.getElementById("registerPassword").value;
 
-      auth.createUserWithEmailAndPassword(email, password)
+      createUserWithEmailAndPassword(auth, email, password)
         .then(() => {
           document.getElementById("message").textContent = "Cadastro realizado com sucesso. Agora você pode fazer login.";
-          switchTab('login');
+          window.switchTab('login');
         })
-        .catch(error => {
+        .catch((error) => {
           document.getElementById("message").textContent = "Erro ao cadastrar: " + error.message;
         });
-    }
+    };
   </script>
+
 </body>
 </html>
