@@ -1181,14 +1181,14 @@
   </footer>
 
 const firebaseConfig = {
-    apiKey: "AIzaSyCXHpzHoMDoHUsSz0HSObSbHx8ueRZ8_F0",
-    authDomain: "rafa-bba31.firebaseapp.com",
-    projectId: "rafa-bba31",
-    storageBucket: "rafa-bba31.firebasestorage.app",
-    messagingSenderId: "115601062100",
-    appId: "1:115601062100:web:dce8479ec545c4489fa341"
-  };
-
+  apiKey: "AIzaSyCXHpzHoMDoHUsSz0HSObSbHx8ueRZ8_F0",
+  authDomain: "rafa-bba31.firebaseapp.com",
+  projectId: "rafa-bba31",
+  storageBucket: "rafa-bba31.appspot.com", // <- Correção aqui
+  messagingSenderId: "115601062100",
+  appId: "1:115601062100:web:dce8479ec545c4489fa341"
+};
+    
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
  
